@@ -1,12 +1,12 @@
 package fish.focus.uvms.webgateway.mock;
 
-import eu.europa.ec.fisheries.uvms.incident.model.dto.EventCreationDto;
-import eu.europa.ec.fisheries.uvms.incident.model.dto.IncidentDto;
-import eu.europa.ec.fisheries.uvms.incident.model.dto.IncidentLogDto;
-import eu.europa.ec.fisheries.uvms.incident.model.dto.UpdateIncidentDto;
-import eu.europa.ec.fisheries.uvms.incident.model.dto.enums.EventTypeEnum;
-import eu.europa.ec.fisheries.uvms.incident.model.dto.enums.IncidentType;
-import eu.europa.ec.fisheries.uvms.incident.model.dto.enums.RelatedObjectType;
+import fish.focus.uvms.incident.model.dto.EventCreationDto;
+import fish.focus.uvms.incident.model.dto.IncidentDto;
+import fish.focus.uvms.incident.model.dto.IncidentLogDto;
+import fish.focus.uvms.incident.model.dto.UpdateIncidentDto;
+import fish.focus.uvms.incident.model.dto.enums.EventTypeEnum;
+import fish.focus.uvms.incident.model.dto.enums.IncidentType;
+import fish.focus.uvms.incident.model.dto.enums.RelatedObjectType;
 import fish.focus.uvms.rest.security.RequiresFeature;
 import fish.focus.uvms.rest.security.UnionVMSFeature;
 

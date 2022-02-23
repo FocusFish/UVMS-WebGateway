@@ -1,6 +1,6 @@
 package fish.focus.uvms.webgateway.dto;
 
-import eu.europa.ec.fisheries.uvms.incident.model.dto.IncidentLogDto;
+import fish.focus.uvms.incident.model.dto.IncidentLogDto;
 
 import java.util.HashMap;
 import java.util.Map;
