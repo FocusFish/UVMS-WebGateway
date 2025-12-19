@@ -24,7 +24,7 @@
         <docker.dev.prestop.phase>validate</docker.dev.prestop.phase>
         <docker.dev.stop.phase>verify</docker.dev.stop.phase>
 
-        <uvms.pom.version>3.33</uvms.pom.version>
+        <uvms.pom.version>3.34</uvms.pom.version>
         <uvms.common.version>4.2.0</uvms.common.version>
         <asset.version>6.10.2</asset.version>
         <movement.version>5.8.0</movement.version>
