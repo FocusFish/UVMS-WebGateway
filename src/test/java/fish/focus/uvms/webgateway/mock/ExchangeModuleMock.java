@@ -1,19 +1,11 @@
 package fish.focus.uvms.webgateway.mock;
 
 import fish.focus.schema.exchange.v1.*;
-import fish.focus.uvms.asset.client.model.AssetDTO;
-import fish.focus.uvms.asset.client.model.AssetListResponse;
-import fish.focus.uvms.asset.client.model.Note;
-import fish.focus.uvms.rest.security.RequiresFeature;
-import fish.focus.uvms.rest.security.UnionVMSFeature;
-import org.slf4j.MDC;
 
 import javax.ejb.Stateless;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.Date;
 import java.util.UUID;
 
@@ -51,12 +43,11 @@ public class ExchangeModuleMock {
         return Response.ok(response).build();
     }
 
-    private ExchangeLogStatusHistoryType createExchangeLogStatusHistory(ExchangeLogStatusTypeType status){
+    private ExchangeLogStatusHistoryType createExchangeLogStatusHistory(ExchangeLogStatusTypeType status) {
         ExchangeLogStatusHistoryType statusHistory = new ExchangeLogStatusHistoryType();
         statusHistory.setStatus(status);
         statusHistory.setTimestamp(new Date());
 
         return statusHistory;
     }
-
 }

@@ -22,14 +22,11 @@ public class ReportRestResourceTest extends BuildStreamCollectorDeployment {
 
     @Test
     @OperateOnDeployment("collector")
-    public void getTracksByAssetSearchTest() throws InterruptedException {
+    public void getTracksByAssetSearchTest() {
         TracksByAssetSearchRequestDto request = new TracksByAssetSearchRequestDto();
         SearchBranch query = new SearchBranch();
         query.addNewSearchLeaf(SearchFields.CFR, "Test");
         request.setAssetQuery(query);
-
-       // System.out.println("Now");
-       // Thread.sleep(1000 * 60 * 5);
 
         Response response = getWebTarget()
                 .path("reports")
@@ -44,5 +41,4 @@ public class ReportRestResourceTest extends BuildStreamCollectorDeployment {
         assertTrue(output.contains("Movement Module Mock"));
         assertTrue(output.contains(MovementSourceType.OTHER.value()));
     }
-
 }

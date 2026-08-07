@@ -15,7 +15,8 @@ import fish.focus.uvms.commons.date.JsonBConfigurator;
 import fish.focus.uvms.rest.security.InternalRestTokenHandler;
 import fish.focus.uvms.rest.security.UnionVMSFeature;
 import fish.focus.uvms.usm.jwt.JwtTokenHandler;
-import fish.focus.uvms.webgateway.mock.*;
+import fish.focus.uvms.webgateway.dto.SearchBranchDeserializer;
+import fish.focus.uvms.webgateway.filter.WebGatewayRestExceptionMapper;
 import org.eu.ingwar.tools.arquillian.extension.suite.annotations.ArquillianSuiteDeployment;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.shrinkwrap.api.Archive;
@@ -30,6 +31,10 @@ import javax.ws.rs.client.WebTarget;
 import java.io.File;
 import java.util.Arrays;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 @ArquillianSuiteDeployment
 public abstract class BuildStreamCollectorDeployment {
 
@@ -43,43 +48,48 @@ public abstract class BuildStreamCollectorDeployment {
 
     @Deployment(name = "collector", order = 2)
     public static Archive<?> createDeployment() {
-
         WebArchive testWar = ShrinkWrap.create(WebArchive.class, "test.war");
 
-        File[] files = Maven.resolver().loadPomFromFile("pom.xml").importRuntimeAndTestDependencies().resolve()
-                .withTransitivity().asFile();
+        File[] files = Maven.resolver()
+                .loadPomFromFile("pom.xml")
+                .importRuntimeAndTestDependencies()
+                .resolve()
+                .withTransitivity()
+                .asFile();
         testWar.addAsLibraries(files);
-        
+
         testWar.addPackages(true, "fish.focus.uvms.webgateway");
 
         testWar.delete("/WEB-INF/web.xml");
         testWar.addAsWebInfResource("mock-web.xml", "web.xml");
 
-        testWar.deleteClass(UnionVMSMock.class);
-        testWar.deleteClass(MovementModuleMock.class);
-        testWar.deleteClass(AssetModuleMock.class);
-        testWar.deleteClass(IncidentModuleMock.class);
-        
+        File[] metaFiles = new File("target/classes/META-INF").listFiles();
+        assertThat(metaFiles, is(notNullValue()));
+        for (File metaFile : metaFiles) {
+            testWar.addAsManifestResource(metaFile);
+        }
+
+        testWar.deletePackages(true, "fish.focus.uvms.webgateway.mock");
+
         return testWar;
     }
 
     @Deployment(name = "uvms", order = 1)
     public static Archive<?> createUVMSMock() {
-
         WebArchive testWar = ShrinkWrap.create(WebArchive.class, "unionvms.war");
 
-        File[] files = Maven.configureResolver().loadPomFromFile("pom.xml")
+        File[] files = Maven.configureResolver()
+                .loadPomFromFile("pom.xml")
                 .importRuntimeAndTestDependencies()
                 .resolve()
-                .withTransitivity().asFile();
+                .withTransitivity()
+                .asFile();
         testWar.addAsLibraries(files);
 
-        testWar.addClass(UnionVMSMock.class);
-        testWar.addClass(MovementModuleMock.class);
-        testWar.addClass(AssetModuleMock.class);
-        testWar.addClass(IncidentModuleMock.class);
-        testWar.addClass(ExchangeModuleMock.class);
-        testWar.addClass(MrModuleMock.class);
+        testWar.addPackages(true, "fish.focus.uvms.webgateway.mock");
+        testWar.addClass(JsonBConfiguratorWebGateway.class);
+        testWar.addClass(SearchBranchDeserializer.class);
+        testWar.addClass(WebGatewayRestExceptionMapper.class);
 
         return testWar;
     }
@@ -92,8 +102,8 @@ public abstract class BuildStreamCollectorDeployment {
 
     protected String getToken() {
         if (token == null) {
-            token = tokenHandler.createToken("user", 
-                    Arrays.asList(UnionVMSFeature.manageManualMovements.getFeatureId(), 
+            token = tokenHandler.createToken("user",
+                    Arrays.asList(UnionVMSFeature.manageManualMovements.getFeatureId(),
                             UnionVMSFeature.viewMovements.getFeatureId(),
                             UnionVMSFeature.viewManualMovements.getFeatureId(),
                             UnionVMSFeature.manageAlarmsHoldingTable.getFeatureId(),

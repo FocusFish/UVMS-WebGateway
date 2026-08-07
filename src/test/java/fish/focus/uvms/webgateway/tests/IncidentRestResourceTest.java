@@ -1,6 +1,5 @@
 package fish.focus.uvms.webgateway.tests;
 
-import fish.focus.schema.exchange.v1.ExchangeLogStatusType;
 import fish.focus.schema.mobileterminal.polltypes.v1.PollRequestType;
 import fish.focus.schema.mobileterminal.polltypes.v1.PollType;
 import fish.focus.uvms.asset.client.model.Note;
@@ -28,6 +27,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,10 +36,10 @@ import static org.junit.Assert.*;
 @RunWith(Arquillian.class)
 public class IncidentRestResourceTest extends BuildStreamCollectorDeployment {
 
-    private String INCIDENT_MODULE_MOCK_ON_ID = "INCIDENT_MODULE_MOCK_ON_ID";
+    private static final String INCIDENT_MODULE_MOCK_ON_ID = "INCIDENT_MODULE_MOCK_ON_ID";
 
     @Before
-    public void clearModuleMockReached(){
+    public void clearModuleMockReached() {
         System.clearProperty("MR_MODULE_REACHED");
         System.clearProperty("GET_ASSET_REACHED");
         System.clearProperty("UPDATE_ASSET_REACHED");
@@ -48,7 +48,7 @@ public class IncidentRestResourceTest extends BuildStreamCollectorDeployment {
 
     @Test
     @OperateOnDeployment("collector")
-    public void addNoteToIncidentTest()  {
+    public void addNoteToIncidentTest() {
         Note note = new Note();
         note.setAssetId(UUID.randomUUID());
         note.setCreatedBy("web gateway tester");
@@ -57,52 +57,53 @@ public class IncidentRestResourceTest extends BuildStreamCollectorDeployment {
         System.clearProperty(INCIDENT_MODULE_MOCK_ON_ID);
         String incidentId = "" + ((long) (Math.random() * 10000d));
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("addNoteToIncident")
                 .path(incidentId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .post(Entity.json(note), Response.class);
+                .post(Entity.json(note), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        Note output = response.readEntity(Note.class);
+            assertEquals(200, response.getStatus());
+            Note output = response.readEntity(Note.class);
 
-        assertEquals(incidentId, System.getProperty(INCIDENT_MODULE_MOCK_ON_ID));
-        assertEquals(note.getCreatedBy(), output.getCreatedBy());
-        assertNotNull(output.getId());
-        assertEquals(note.getAssetId(), output.getAssetId());
-
+            assertEquals(incidentId, System.getProperty(INCIDENT_MODULE_MOCK_ON_ID));
+            assertEquals(note.getCreatedBy(), output.getCreatedBy());
+            assertNotNull(output.getId());
+            assertEquals(note.getAssetId(), output.getAssetId());
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void addSimplePollToIncidentTest()  {
+    public void addSimplePollToIncidentTest() {
         SimpleCreatePoll comment = new SimpleCreatePoll();
         comment.setComment("add simple poll to asset test");
 
         System.clearProperty(INCIDENT_MODULE_MOCK_ON_ID);
         String incidentId = "" + ((long) (Math.random() * 10000d));
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("createSimplePollForIncident")
                 .path(incidentId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .post(Entity.json(comment), Response.class);
+                .post(Entity.json(comment), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        String output = response.readEntity(PollIdDto.class).getPollId();
-        assertNotNull(output);
-        assertNotNull(UUID.fromString(output));
+            assertEquals(200, response.getStatus());
+            String output = response.readEntity(PollIdDto.class).getPollId();
+            assertNotNull(output);
+            assertNotNull(UUID.fromString(output));
 
-        assertEquals(incidentId, System.getProperty(INCIDENT_MODULE_MOCK_ON_ID));
+            assertEquals(incidentId, System.getProperty(INCIDENT_MODULE_MOCK_ON_ID));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void addPollToIncidentTest()  {
+    public void addPollToIncidentTest() {
         PollRequestType pollRequest = new PollRequestType();
         pollRequest.setComment("add poll to asset test");
         pollRequest.setPollType(PollType.MANUAL_POLL);
@@ -111,278 +112,283 @@ public class IncidentRestResourceTest extends BuildStreamCollectorDeployment {
         System.clearProperty(INCIDENT_MODULE_MOCK_ON_ID);
         String incidentId = "" + ((long) (Math.random() * 10000d));
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("createPollForIncident")
                 .path(incidentId)
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .post(Entity.json(pollRequest), Response.class);
+                .post(Entity.json(pollRequest), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        String output = response.readEntity(PollIdDto.class).getPollId();
-        assertNotNull(output);
-        assertNotNull(UUID.fromString(output));
+            assertEquals(200, response.getStatus());
+            String output = response.readEntity(PollIdDto.class).getPollId();
+            assertNotNull(output);
+            assertNotNull(UUID.fromString(output));
 
-        assertNotNull(output);
-        assertEquals(incidentId, System.getProperty(INCIDENT_MODULE_MOCK_ON_ID));
+            assertNotNull(output);
+            assertEquals(incidentId, System.getProperty(INCIDENT_MODULE_MOCK_ON_ID));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void getIncidentLogForIncidentCheckNoteTest()  {
-        Response response = getWebTarget()
+    public void getIncidentLogForIncidentCheckNoteTest() {
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("incidentLogForIncident")
                 .path("555")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .get(Response.class);
+                .get(Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        ExtendedIncidentLogDto output = response.readEntity(ExtendedIncidentLogDto.class);
+            assertEquals(200, response.getStatus());
+            ExtendedIncidentLogDto output = response.readEntity(ExtendedIncidentLogDto.class);
 
-        assertFalse(output.getIncidentLogs().isEmpty());
-        assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto != null));
-        assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto.getIncidentId() == 555l));
+            assertFalse(output.getIncidentLogs().isEmpty());
+            assertTrue(output.getIncidentLogs().values().stream().allMatch(Objects::nonNull));
+            assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto.getIncidentId() == 555L));
 
-        Optional<IncidentLogDto> noteIncidentLog = output.getIncidentLogs().values().stream().filter(dto -> dto.getEventType().equals(EventTypeEnum.NOTE_CREATED)).findAny();
-        assertTrue(noteIncidentLog.isPresent());
+            Optional<IncidentLogDto> noteIncidentLog = output.getIncidentLogs().values().stream().filter(dto -> dto.getEventType().equals(EventTypeEnum.NOTE_CREATED)).findAny();
+            assertTrue(noteIncidentLog.isPresent());
 
-        Note outputNote = output.getRelatedObjects().getNotes().get(noteIncidentLog.get().getRelatedObjectId().toString());
-        assertTrue(outputNote != null);
-
+            Note outputNote = output.getRelatedObjects().getNotes().get(noteIncidentLog.get().getRelatedObjectId().toString());
+            assertNotNull(outputNote);
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void getIncidentLogWithNoteThatDoesNotExist()  {
+    public void getIncidentLogWithNoteThatDoesNotExist() {
         System.setProperty("NOTE_RETURN_NULL", "true");
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("incidentLogForIncident")
                 .path("555")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .get(Response.class);
+                .get(Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        ExtendedIncidentLogDto output = response.readEntity(ExtendedIncidentLogDto.class);
+            assertEquals(200, response.getStatus());
+            ExtendedIncidentLogDto output = response.readEntity(ExtendedIncidentLogDto.class);
 
-        assertFalse(output.getIncidentLogs().isEmpty());
-        assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto != null));
-        assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto.getIncidentId() == 555l));
+            assertFalse(output.getIncidentLogs().isEmpty());
+            assertTrue(output.getIncidentLogs().values().stream().allMatch(Objects::nonNull));
+            assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto.getIncidentId() == 555L));
 
-        Optional<IncidentLogDto> noteIncidentLog = output.getIncidentLogs().values().stream().filter(dto -> dto.getEventType().equals(EventTypeEnum.NOTE_CREATED)).findAny();
-        assertTrue(noteIncidentLog.isPresent());
+            Optional<IncidentLogDto> noteIncidentLog = output.getIncidentLogs().values().stream().filter(dto -> dto.getEventType().equals(EventTypeEnum.NOTE_CREATED)).findAny();
+            assertTrue(noteIncidentLog.isPresent());
 
-        assertTrue(output.getRelatedObjects().getNotes().isEmpty());
-
+            assertTrue(output.getRelatedObjects().getNotes().isEmpty());
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void getIncidentLogForIncidentCheckMovementTest()  {
-        Response response = getWebTarget()
+    public void getIncidentLogForIncidentCheckMovementTest() {
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("incidentLogForIncident")
                 .path("555")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .get(Response.class);
+                .get(Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        ExtendedIncidentLogDto output = response.readEntity(ExtendedIncidentLogDto.class);
+            assertEquals(200, response.getStatus());
+            ExtendedIncidentLogDto output = response.readEntity(ExtendedIncidentLogDto.class);
 
-        assertFalse(output.getIncidentLogs().isEmpty());
-        assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto != null));
-        assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto.getIncidentId() == 555l));
+            assertFalse(output.getIncidentLogs().isEmpty());
+            assertTrue(output.getIncidentLogs().values().stream().allMatch(Objects::nonNull));
+            assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto.getIncidentId() == 555L));
 
-        Optional<IncidentLogDto> movementIncidentLog = output.getIncidentLogs().values().stream().filter(dto -> dto.getEventType().equals(EventTypeEnum.MANUAL_POSITION)).findAny();
-        assertTrue(movementIncidentLog.isPresent());
+            Optional<IncidentLogDto> movementIncidentLog = output.getIncidentLogs().values().stream().filter(dto -> dto.getEventType().equals(EventTypeEnum.MANUAL_POSITION)).findAny();
+            assertTrue(movementIncidentLog.isPresent());
 
-        MovementDto outputMovement = output.getRelatedObjects().getPositions().get(movementIncidentLog.get().getRelatedObjectId().toString());
-        assertTrue(outputMovement != null);
-
+            MovementDto outputMovement = output.getRelatedObjects().getPositions().get(movementIncidentLog.get().getRelatedObjectId().toString());
+            assertNotNull(outputMovement);
+        }
     }
-
 
     @Test
     @OperateOnDeployment("collector")
-    public void getIncidentLogForIncidentCheckPollStatusTest()  {
-        Response response = getWebTarget()
+    public void getIncidentLogForIncidentCheckPollStatusTest() {
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("incidentLogForIncident")
                 .path("555")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .get(Response.class);
+                .get(Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        ExtendedIncidentLogDto output = response.readEntity(ExtendedIncidentLogDto.class);
+            assertEquals(200, response.getStatus());
+            ExtendedIncidentLogDto output = response.readEntity(ExtendedIncidentLogDto.class);
 
-        assertFalse(output.getIncidentLogs().isEmpty());
-        assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto != null));
-        assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto.getIncidentId() == 555l));
+            assertFalse(output.getIncidentLogs().isEmpty());
+            assertTrue(output.getIncidentLogs().values().stream().allMatch(Objects::nonNull));
+            assertTrue(output.getIncidentLogs().values().stream().allMatch(dto -> dto.getIncidentId() == 555L));
 
-        Optional<IncidentLogDto> pollIncidentLog = output.getIncidentLogs().values().stream().filter(dto -> dto.getEventType().equals(EventTypeEnum.POLL_CREATED)).findAny();
-        assertTrue(pollIncidentLog.isPresent());
+            Optional<IncidentLogDto> pollIncidentLog = output.getIncidentLogs().values().stream().filter(dto -> dto.getEventType().equals(EventTypeEnum.POLL_CREATED)).findAny();
+            assertTrue(pollIncidentLog.isPresent());
 
-        PollInfoDto outputPollStatus = output.getRelatedObjects().getPolls().get(pollIncidentLog.get().getRelatedObjectId().toString());
-        assertTrue(outputPollStatus != null);
-        assertNotNull(outputPollStatus.getPollStatus());
-        assertNotNull(outputPollStatus.getPollInfo());
-        assertNotNull(outputPollStatus.getMobileTerminalSnapshot());
-        assertNotNull(outputPollStatus.getMobileTerminalSnapshot().getId());
+            PollInfoDto outputPollStatus = output.getRelatedObjects().getPolls().get(pollIncidentLog.get().getRelatedObjectId().toString());
 
+            assertNotNull(outputPollStatus);
+            assertNotNull(outputPollStatus.getPollStatus());
+            assertNotNull(outputPollStatus.getPollInfo());
+            assertNotNull(outputPollStatus.getMobileTerminalSnapshot());
+            assertNotNull(outputPollStatus.getMobileTerminalSnapshot().getId());
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void createParkedIncident()  {
+    public void createParkedIncident() {
         IncidentDto incident = createBasicIncidentDto();
         incident.setType(IncidentType.PARKED);
         incident.setExpiryDate(Instant.now().plus(10, ChronoUnit.MINUTES).truncatedTo(ChronoUnit.MILLIS));
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("createIncident")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .post(Entity.json(incident), Response.class);
+                .post(Entity.json(incident), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        IncidentDto output = response.readEntity(IncidentDto.class);
-        assertNotNull(output.getAssetId());
-        assertNotNull(output.getId());
+            assertEquals(200, response.getStatus());
+            IncidentDto output = response.readEntity(IncidentDto.class);
+            assertNotNull(output.getAssetId());
+            assertNotNull(output.getId());
 
-        assertEquals("true", System.getProperty("MR_MODULE_REACHED"));
-        assertEquals("true", System.getProperty("GET_ASSET_REACHED"));
-        assertEquals("true", System.getProperty("UPDATE_ASSET_REACHED"));
-
+            assertEquals("true", System.getProperty("MR_MODULE_REACHED"));
+            assertEquals("true", System.getProperty("GET_ASSET_REACHED"));
+            assertEquals("true", System.getProperty("UPDATE_ASSET_REACHED"));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void createManualModeIncident()  {
+    public void createManualModeIncident() {
         IncidentDto incident = createBasicIncidentDto();
         incident.setType(IncidentType.MANUAL_POSITION_MODE);
         incident.setExpiryDate(Instant.now().plus(10, ChronoUnit.MINUTES).truncatedTo(ChronoUnit.MILLIS));
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("createIncident")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .post(Entity.json(incident), Response.class);
+                .post(Entity.json(incident), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        IncidentDto output = response.readEntity(IncidentDto.class);
-        assertNotNull(output.getAssetId());
-        assertNotNull(output.getId());
+            assertEquals(200, response.getStatus());
+            IncidentDto output = response.readEntity(IncidentDto.class);
+            assertNotNull(output.getAssetId());
+            assertNotNull(output.getId());
 
-        assertNull(System.getProperty("MR_MODULE_REACHED"));
-        assertNull(System.getProperty("GET_ASSET_REACHED"));
-        assertNull(System.getProperty("UPDATE_ASSET_REACHED"));
+            assertNull(System.getProperty("MR_MODULE_REACHED"));
+            assertNull(System.getProperty("GET_ASSET_REACHED"));
+            assertNull(System.getProperty("UPDATE_ASSET_REACHED"));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void updateParkedIncidentToResolved()  {
+    public void updateParkedIncidentToResolved() {
         UpdateIncidentDto update = new UpdateIncidentDto();
-        update.setIncidentId(555l);
+        update.setIncidentId(555L);
         update.setType(IncidentType.PARKED);
         update.setStatus(StatusEnum.RESOLVED);
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("updateIncidentStatus")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .put(Entity.json(update), Response.class);
+                .put(Entity.json(update), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        IncidentDto output = response.readEntity(IncidentDto.class);
-        assertNotNull(output.getAssetId());
-        assertNotNull(output.getId());
+            assertEquals(200, response.getStatus());
+            IncidentDto output = response.readEntity(IncidentDto.class);
+            assertNotNull(output.getAssetId());
+            assertNotNull(output.getId());
 
-        assertEquals("true", System.getProperty("GET_ASSET_REACHED"));
-        assertEquals("true", System.getProperty("UPDATE_ASSET_REACHED"));
+            assertEquals("true", System.getProperty("GET_ASSET_REACHED"));
+            assertEquals("true", System.getProperty("UPDATE_ASSET_REACHED"));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void updateIncidentTypeToParked()  {
+    public void updateIncidentTypeToParked() {
         UpdateIncidentDto update = new UpdateIncidentDto();
-        update.setIncidentId(555l);
+        update.setIncidentId(555L);
         update.setType(IncidentType.PARKED);
         update.setStatus(StatusEnum.PARKED);
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("updateIncidentType")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .put(Entity.json(update), Response.class);
+                .put(Entity.json(update), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        IncidentDto output = response.readEntity(IncidentDto.class);
-        assertNotNull(output.getAssetId());
-        assertNotNull(output.getId());
+            assertEquals(200, response.getStatus());
+            IncidentDto output = response.readEntity(IncidentDto.class);
+            assertNotNull(output.getAssetId());
+            assertNotNull(output.getId());
 
-        assertEquals("true", System.getProperty("GET_ASSET_REACHED"));
-        assertEquals("true", System.getProperty("UPDATE_ASSET_REACHED"));
+            assertEquals("true", System.getProperty("GET_ASSET_REACHED"));
+            assertEquals("true", System.getProperty("UPDATE_ASSET_REACHED"));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void updateManualIncidentToAttempted()  {
+    public void updateManualIncidentToAttempted() {
         UpdateIncidentDto update = new UpdateIncidentDto();
-        update.setIncidentId(555l);
+        update.setIncidentId(555L);
         update.setType(IncidentType.MANUAL_POSITION_MODE);
         update.setStatus(StatusEnum.ATTEMPTED_CONTACT);
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("updateIncidentStatus")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .put(Entity.json(update), Response.class);
+                .put(Entity.json(update), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        IncidentDto output = response.readEntity(IncidentDto.class);
-        assertNotNull(output.getAssetId());
-        assertNotNull(output.getId());
+            assertEquals(200, response.getStatus());
+            IncidentDto output = response.readEntity(IncidentDto.class);
+            assertNotNull(output.getAssetId());
+            assertNotNull(output.getId());
 
-        assertNull(System.getProperty("GET_ASSET_REACHED"));
-        assertNull(System.getProperty("UPDATE_ASSET_REACHED"));
+            assertNull(System.getProperty("GET_ASSET_REACHED"));
+            assertNull(System.getProperty("UPDATE_ASSET_REACHED"));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void updateIncidentExpiry()  {
+    public void updateIncidentExpiry() {
         UpdateIncidentDto update = new UpdateIncidentDto();
-        update.setIncidentId(555l);
+        update.setIncidentId(555L);
         update.setType(IncidentType.MANUAL_POSITION_MODE);
         update.setStatus(StatusEnum.ATTEMPTED_CONTACT);
         update.setExpiryDate(Instant.now());
 
-        Response response = getWebTarget()
+        try (Response response = getWebTarget()
                 .path("incidents")
                 .path("updateIncidentExpiry")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, getToken())
-                .put(Entity.json(update), Response.class);
+                .put(Entity.json(update), Response.class)) {
 
-        assertEquals(200, response.getStatus());
-        IncidentDto output = response.readEntity(IncidentDto.class);
-        assertNotNull(output.getAssetId());
-        assertNotNull(output.getId());
-        assertEquals(update.getExpiryDate().truncatedTo(ChronoUnit.MILLIS), output.getExpiryDate());
-
+            assertEquals(200, response.getStatus());
+            IncidentDto output = response.readEntity(IncidentDto.class);
+            assertNotNull(output.getAssetId());
+            assertNotNull(output.getId());
+            assertEquals(update.getExpiryDate().truncatedTo(ChronoUnit.MILLIS), output.getExpiryDate());
+        }
     }
 
-    public static IncidentDto createBasicIncidentDto() {
+    private IncidentDto createBasicIncidentDto() {
         IncidentDto incidentDto = new IncidentDto();
         incidentDto.setAssetId(UUID.randomUUID());
         incidentDto.setAssetName("Test asset");
@@ -390,5 +396,4 @@ public class IncidentRestResourceTest extends BuildStreamCollectorDeployment {
         incidentDto.setType(IncidentType.PARKED);
         return incidentDto;
     }
-
 }
