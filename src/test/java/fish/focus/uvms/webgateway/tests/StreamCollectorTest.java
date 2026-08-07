@@ -36,11 +36,23 @@ import static org.junit.Assert.assertTrue;
 public class StreamCollectorTest extends BuildStreamCollectorDeployment {
 
     private final static Logger LOG = LoggerFactory.getLogger(StreamCollectorTest.class);
-
+    //Connection close and there is nothing to receive
+    private static final Runnable onComplete = () -> {
+        System.out.println("Done!");
+    };
     private static String dataString = "";
     private static String eventString = "";
+    private static final Consumer<InboundSseEvent> onEvent = (inboundSseEvent) -> {
+        String data = inboundSseEvent.readData();
+        eventString = eventString.concat(inboundSseEvent.getName() == null ? " null name " : inboundSseEvent.getName());
+        dataString = dataString.concat(data);
+    };
     private static String errorString = "";
-
+    //Error
+    private static final Consumer<Throwable> onError = (throwable) -> {
+        LOG.error("Error while testing sse: ", throwable);
+        errorString = throwable.getMessage();
+    };
     private Jsonb jsonb;
 
     @Inject
@@ -56,110 +68,103 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
 
     @Test
     @OperateOnDeployment("collector")
-    public void worldsBestAndMostUsefulArqTest() {
-        assertTrue(true);
-    }
-
-    @Test
-    @OperateOnDeployment("collector")
     public void connectToSSETest() throws InterruptedException {
-        SseEventSource source = createSSEEventSource();
-        source.open();
-        assertTrue(source.isOpen());
-        Thread.sleep(1000);
-        assertTrue("dataString: " + dataString, dataString.contains("registered"));
-        source.close();
-        assertFalse(source.isOpen());
+        try (SseEventSource source = createSSEEventSource()) {
+            source.open();
+            assertTrue(source.isOpen());
+            Thread.sleep(1000);
+            assertTrue("dataString: " + dataString, dataString.contains("registered"));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
     public void sendMessageOnQueueAndCatchItOnSseStream() throws Exception {
-        SseEventSource source = createSSEEventSource();
-        source.open();
-        String testData = "test data";
-        String testEvent = "test event";
-        sendDataAsJMSMessageToStream(testData, testEvent, null, null);
-        Thread.sleep(100);
+        try (SseEventSource source = createSSEEventSource()) {
+            source.open();
+            String testData = "test data";
+            String testEvent = "test event";
+            sendDataAsJMSMessageToStream(testData, testEvent, null, null);
+            Thread.sleep(100);
 
-        assertTrue(eventString, eventString.contains(testEvent));
-        assertTrue(dataString, dataString.contains(testData));
-        source.close();
+            assertTrue(eventString, eventString.contains(testEvent));
+            assertTrue(dataString, dataString.contains(testData));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
     public void sendMessageWithMovementSourceOnQueueAndCatchItOnSseStream() throws Exception {
-        SseEventSource source = createSSEEventSource();
-        source.open();
-        String testData = "test data";
-        String testEvent = "test event";
-        sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
-        Thread.sleep(100);
+        try (SseEventSource source = createSSEEventSource()) {
+            source.open();
+            String testData = "test data";
+            String testEvent = "test event";
+            sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
+            Thread.sleep(100);
 
-        assertTrue(eventString, eventString.contains(testEvent));
-        assertTrue(dataString, dataString.contains(testData));
-        source.close();
+            assertTrue(eventString, eventString.contains(testEvent));
+            assertTrue(dataString, dataString.contains(testData));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
     public void listenToMovementSourceManualAndCatchMoveSourceManual() throws Exception {
-        SseEventSource source = createSSEEventSourceWithMovementSourceParam(MovementSourceType.MANUAL.value());
-        source.open();
-        String testData = "test data";
-        String testEvent = "test event";
-        sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
-        Thread.sleep(100);
+        try (SseEventSource source = createSSEEventSourceWithMovementSourceParam(MovementSourceType.MANUAL.value())) {
+            source.open();
+            String testData = "test data";
+            String testEvent = "test event";
+            sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
+            Thread.sleep(1000);
 
-        assertTrue(eventString, eventString.contains(testEvent));
-        assertTrue(dataString, dataString.contains(testData));
-        source.close();
+            assertTrue(eventString, eventString.contains(testEvent));
+            assertTrue(dataString, dataString.contains(testData));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
     public void sendMessageIncludingSubscriberOnQueueAndCatchItOnSseStream() throws Exception {
-        SseEventSource source = createSSEEventSource();
-        source.open();
-        String testData = "test data";
-        String testEvent = "test event";
-        sendDataAsJMSMessageToStream(testData, testEvent, Collections.singletonList("user"), null);
-        Thread.sleep(100);
+        try (SseEventSource source = createSSEEventSource()) {
+            source.open();
+            String testData = "test data";
+            String testEvent = "test event";
+            sendDataAsJMSMessageToStream(testData, testEvent, Collections.singletonList("user"), null);
+            Thread.sleep(100);
 
-        assertTrue(eventString, eventString.contains(testEvent));
-        assertTrue(dataString, dataString.contains(testData));
-        source.close();
+            assertTrue(eventString, eventString.contains(testEvent));
+            assertTrue(dataString, dataString.contains(testData));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
     public void sendMessageIncludingOtherSubscriberOnQueueAndWatchTheSseStreamSoThatItDoesNotAppear() throws Exception {
-        SseEventSource source = createSSEEventSource();
-        source.open();
-        String testData = "test data";
-        String testEvent = "test event";
-        sendDataAsJMSMessageToStream(testData, testEvent, Collections.singletonList("NOT user"), null);
-        Thread.sleep(1000);
+        try (SseEventSource source = createSSEEventSource()) {
+            source.open();
+            String testData = "test data";
+            String testEvent = "test event";
+            sendDataAsJMSMessageToStream(testData, testEvent, Collections.singletonList("NOT user"), null);
+            Thread.sleep(1000);
 
-        assertFalse(eventString, eventString.contains(testEvent));
-        assertFalse(dataString, dataString.contains(testData));
-        source.close();
+            assertFalse(eventString, eventString.contains(testEvent));
+            assertFalse(dataString, dataString.contains(testData));
+        }
     }
 
     @Test
     @OperateOnDeployment("collector")
     public void sendMessageIncludingOtherMovementSourceOnQueueAndWatchTheSseStreamSoThatItDoesNotAppear() throws Exception {
-        SseEventSource source = createSSEEventSourceWithMovementSourceParam(MovementSourceType.OTHER.value());
-        source.open();
-        String testData = "test data";
-        String testEvent = "test event";
-        sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
-        Thread.sleep(1000);
+        try (SseEventSource source = createSSEEventSourceWithMovementSourceParam(MovementSourceType.OTHER.value())) {
+            source.open();
+            String testData = "test data";
+            String testEvent = "test event";
+            sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
+            Thread.sleep(1000);
 
-        assertFalse(eventString, eventString.contains(testEvent));
-        assertFalse(dataString, dataString.contains(testData));
-        source.close();
+            assertFalse(eventString, eventString.contains(testEvent));
+            assertFalse(dataString, dataString.contains(testData));
+        }
     }
 
     private SseEventSource createSSEEventSource() {
@@ -191,26 +196,8 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
         message.setStringProperty(Constants.SUBSCRIBERLIST, subscriberJson);
         message.setStringProperty(Constants.MOVEMENT_SOURCE, movementSource);
 
-
         Topic t = context.createTopic(Constants.TOPIC_NAME);
 
         context.createProducer().send(t, message);
     }
-
-    private static Consumer<InboundSseEvent> onEvent = (inboundSseEvent) -> {
-        String data = inboundSseEvent.readData();
-        eventString = eventString.concat(inboundSseEvent.getName() == null ? " null name " : inboundSseEvent.getName());
-        dataString = dataString.concat(data);
-    };
-
-    //Error
-    private static Consumer<Throwable> onError = (throwable) -> {
-        LOG.error("Error while testing sse: ", throwable);
-        errorString = throwable.getMessage();
-    };
-
-    //Connection close and there is nothing to receive
-    private static Runnable onComplete = () -> {
-        System.out.println("Done!");
-    };
 }
