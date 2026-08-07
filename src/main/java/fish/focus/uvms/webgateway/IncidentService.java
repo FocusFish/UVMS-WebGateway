@@ -1,5 +1,6 @@
 package fish.focus.uvms.webgateway;
 
+import fish.focus.schema.exchange.v1.ExchangeLogStatusType;
 import fish.focus.schema.mobileterminal.polltypes.v1.PollRequestType;
 import fish.focus.uvms.asset.client.AssetClient;
 import fish.focus.uvms.asset.client.model.*;
@@ -16,9 +17,11 @@ import fish.focus.uvms.incident.model.dto.enums.StatusEnum;
 import fish.focus.uvms.mobileterminal.model.dto.CreatePollResultDto;
 import fish.focus.uvms.movement.client.MovementRestClient;
 import fish.focus.uvms.movement.model.dto.MovementDto;
+import fish.focus.uvms.rest.security.InternalRestTokenHandler;
 import fish.focus.uvms.webgateway.dto.ExtendedIncidentLogDto;
 import fish.focus.uvms.webgateway.dto.PollInfoDto;
 import fish.focus.uvms.webgateway.filter.AppError;
+
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.ejb.Stateless;
@@ -37,16 +40,17 @@ import java.util.concurrent.TimeUnit;
 @Stateless
 public class IncidentService {
 
-    private static List<IncidentType> INCIDENT_PARKED_GROUP = Arrays.asList(IncidentType.OWNERSHIP_TRANSFER ,IncidentType.SEASONAL_FISHING ,IncidentType.PARKED);
+    private static final List<IncidentType> INCIDENT_PARKED_GROUP = Arrays.asList(IncidentType.OWNERSHIP_TRANSFER, IncidentType.SEASONAL_FISHING, IncidentType.PARKED);
 
+    @Inject
+    PollService pollService;
+
+    @Inject
+    ExchangeRestClient exchangeRestClient;
     private WebTarget assetWebTarget;
-
     private WebTarget incidentWebTarget;
-
     private WebTarget exchangeWebTarget;
-
     private WebTarget mrWebTarget;
-
     private Jsonb json;
 
     @Resource(name = "java:global/asset_endpoint")
@@ -68,16 +72,14 @@ public class IncidentService {
     private MovementRestClient movementClient;
 
     @Inject
-    ExchangeRestClient exchangeRestClient;
-
-    @Inject
-    PollService pollService;
+    private InternalRestTokenHandler internalRestTokenHandler;
 
     @PostConstruct
     private void setUpClient() {
         ClientBuilder clientBuilder = ClientBuilder.newBuilder();
         clientBuilder.connectTimeout(30, TimeUnit.SECONDS);
         clientBuilder.readTimeout(30, TimeUnit.SECONDS);
+
         Client client = clientBuilder.build();
         client.register(JsonBConfigurator.class);
         assetWebTarget = client.target(assetEndpoint);
@@ -88,32 +90,28 @@ public class IncidentService {
         json = new JsonBConfiguratorWebGateway().getContext(null);
     }
 
-    public ExtendedIncidentLogDto incidentLogForIncident(String incidentId, String auth){
-        Map<Long, IncidentLogDto> dto = getIncidentLogForIncident(incidentId, auth);
+    public ExtendedIncidentLogDto getIncidentLogForIncident(String incidentId, String auth) {
+        Map<Long, IncidentLogDto> dto = getIncidentLogFromIncidentModule(incidentId, auth);
 
         ExtendedIncidentLogDto response = new ExtendedIncidentLogDto(dto.size());
         response.setIncidentLogs(dto);
         for (IncidentLogDto logDto : dto.values()) {
-
-            if(RelatedObjectType.NOTE.equals(logDto.getRelatedObjectType()) && logDto.getRelatedObjectId() != null) {
+            if (RelatedObjectType.NOTE.equals(logDto.getRelatedObjectType()) && logDto.getRelatedObjectId() != null) {
                 Note note = getAssetNote(logDto.getRelatedObjectId(), auth);
                 response.getRelatedObjects().getNotes().put(logDto.getRelatedObjectId().toString(), note);
-
-            }else if(RelatedObjectType.MOVEMENT.equals(logDto.getRelatedObjectType()) && logDto.getRelatedObjectId() != null) {
+            } else if (RelatedObjectType.MOVEMENT.equals(logDto.getRelatedObjectType()) && logDto.getRelatedObjectId() != null) {
                 MovementDto microMovement = movementClient.getMovementById(logDto.getRelatedObjectId());
                 response.getRelatedObjects().getPositions().put(logDto.getRelatedObjectId().toString(), microMovement);
-
-            }else if(RelatedObjectType.POLL.equals(logDto.getRelatedObjectType()) && logDto.getRelatedObjectId() != null) {
+            } else if (RelatedObjectType.POLL.equals(logDto.getRelatedObjectType()) && logDto.getRelatedObjectId() != null) {
                 PollInfoDto pollInfo = pollService.getPollInfo(logDto.getRelatedObjectId());
                 response.getRelatedObjects().getPolls().put(logDto.getRelatedObjectId().toString(), pollInfo);
             }
-
         }
 
         return response;
     }
 
-    private Map<Long, IncidentLogDto> getIncidentLogForIncident(String incidentId, String auth){
+    private Map<Long, IncidentLogDto> getIncidentLogFromIncidentModule(String incidentId, String auth) {
         String jsonResponse = incidentWebTarget
                 .path("incident")
                 .path("incidentLogForIncident")
@@ -122,14 +120,15 @@ public class IncidentService {
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .get(String.class);
 
-        if(jsonResponse.contains("\"code\":")){
-            String errorDeskription = json.fromJson(jsonResponse, AppError.class).description;
-            throw new RuntimeException(errorDeskription);
+        if (jsonResponse.contains("\"code\":")) {
+            String errorDescription = json.fromJson(jsonResponse, AppError.class).description;
+            throw new RuntimeException(errorDescription);
         }
-        return json.fromJson(jsonResponse, new HashMap<Long, IncidentLogDto>(){}.getClass().getGenericSuperclass());
+
+        return json.fromJson(jsonResponse, new HashMap<Long, IncidentLogDto>() {}.getClass().getGenericSuperclass());
     }
 
-    private Note getAssetNote(UUID noteId, String auth){
+    private Note getAssetNote(UUID noteId, String auth) {
         String jsonNote = assetWebTarget
                 .path("asset")
                 .path("note")
@@ -138,17 +137,17 @@ public class IncidentService {
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .get(String.class);
 
-        if(jsonNote == null){
+        if (jsonNote == null) {
             return null;
         }
-        if(jsonNote.contains("\"code\":")){
-            String errorDeskription = json.fromJson(jsonNote, AppError.class).description;
-            throw new RuntimeException(errorDeskription);
+        if (jsonNote.contains("\"code\":")) {
+            String errorDescription = json.fromJson(jsonNote, AppError.class).description;
+            throw new RuntimeException(errorDescription);
         }
         return json.fromJson(jsonNote, Note.class);
     }
 
-    public Note addNoteToIncident(String incidentId, String auth, Note note){
+    public Note addNoteToIncident(String incidentId, String auth, Note note) {
         Note createdNote = addNoteToAsset(note, auth);
 
         EventCreationDto eventCreation = new EventCreationDto(EventTypeEnum.NOTE_CREATED, createdNote.getId());
@@ -157,7 +156,7 @@ public class IncidentService {
         return createdNote;
     }
 
-    private Note addNoteToAsset(Note note, String auth){
+    private Note addNoteToAsset(Note note, String auth) {
         String jsonCreatedNote = assetWebTarget
                 .path("asset")
                 .path("notes")
@@ -165,61 +164,56 @@ public class IncidentService {
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .post(Entity.json(note), String.class);
 
-        if(jsonCreatedNote.contains("\"code\":")){
-            String errorDeskription = json.fromJson(jsonCreatedNote, AppError.class).description;
-            throw new RuntimeException(errorDeskription);
+        if (jsonCreatedNote.contains("\"code\":")) {
+            String errorDescription = json.fromJson(jsonCreatedNote, AppError.class).description;
+            throw new RuntimeException(errorDescription);
         }
 
         return json.fromJson(jsonCreatedNote, Note.class);
     }
 
-    private IncidentDto createIncident(IncidentDto incident, String auth){
+    private IncidentDto createIncident(IncidentDto incident, String auth) {
         String jsonDto = incidentWebTarget
                 .path("incident")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .post(Entity.json(incident), String.class);
 
-        if(jsonDto.contains("\"code\":")){
-            String errorDeskription = json.fromJson(jsonDto, AppError.class).description;
-            throw new RuntimeException(errorDeskription);
+        if (jsonDto.contains("\"code\":")) {
+            String errorDescription = json.fromJson(jsonDto, AppError.class).description;
+            throw new RuntimeException(errorDescription);
         }
         return json.fromJson(jsonDto, IncidentDto.class);
     }
 
-    public IncidentDto updateIncidentType(UpdateIncidentDto update, String auth, String user){
+    public IncidentDto updateIncidentType(UpdateIncidentDto update, String auth, String user) {
         IncidentDto originalIncident = getIncident("" + update.getIncidentId(), auth);
         IncidentDto updatedIncident = updateIncident(update, Constants.UPDATE_INCIDENT_TYPE_ADDRESS, auth);
 
-        if(isIncidentTypeInParkedGroup(updatedIncident)){
-            if(!originalIncident.getType().equals(updatedIncident.getType())) {
-                setParkedOnAsset(updatedIncident.getAssetId().toString(), user, true);
-                removeAssetFromPreviousReport(updatedIncident.getAssetId().toString(), auth);
-            }
+        if (isIncidentTypeInParkedGroup(updatedIncident) &&
+                !originalIncident.getType().equals(updatedIncident.getType())) {
+            setParkedOnAsset(updatedIncident.getAssetId().toString(), user, true);
+            removeAssetFromPreviousReport(updatedIncident.getAssetId().toString(), auth);
         }
 
         return updatedIncident;
     }
 
-    public IncidentDto updateIncidentStatus(UpdateIncidentDto update, String auth, String user){
+    public IncidentDto updateIncidentStatus(UpdateIncidentDto update, String auth, String user) {
         IncidentDto updatedIncident = updateIncident(update, Constants.UPDATE_INCIDENT_STATUS_ADDRESS, auth);
 
-        if(updatedIncident.getStatus().equals(StatusEnum.RESOLVED)){
-            if(isIncidentTypeInParkedGroup(updatedIncident)){
-                setParkedOnAsset(updatedIncident.getAssetId().toString(), user, false);
-            }
+        if (updatedIncident.getStatus().equals(StatusEnum.RESOLVED) && isIncidentTypeInParkedGroup(updatedIncident)) {
+            setParkedOnAsset(updatedIncident.getAssetId().toString(), user, false);
         }
 
         return updatedIncident;
     }
 
-    public IncidentDto updateIncidentExpiry(UpdateIncidentDto update, String auth){
-        IncidentDto updatedIncident = updateIncident(update, Constants.UPDATE_INCIDENT_EXPIRY_ADDRESS, auth);
-
-        return updatedIncident;
+    public IncidentDto updateIncidentExpiry(UpdateIncidentDto update, String auth) {
+        return updateIncident(update, Constants.UPDATE_INCIDENT_EXPIRY_ADDRESS, auth);
     }
 
-    private IncidentDto updateIncident(UpdateIncidentDto update, String updateAddress, String auth){
+    private IncidentDto updateIncident(UpdateIncidentDto update, String updateAddress, String auth) {
         String jsonDto = incidentWebTarget
                 .path("incident")
                 .path(updateAddress)
@@ -227,19 +221,19 @@ public class IncidentService {
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .put(Entity.json(update), String.class);
 
-        if(jsonDto.contains("\"code\":")){
-            String errorDeskription = json.fromJson(jsonDto, AppError.class).description;
-            throw new RuntimeException(errorDeskription);
+        if (jsonDto.contains("\"code\":")) {
+            String errorDescription = json.fromJson(jsonDto, AppError.class).description;
+            throw new RuntimeException(errorDescription);
         }
         return json.fromJson(jsonDto, IncidentDto.class);
     }
 
 
-    private boolean isIncidentTypeInParkedGroup(IncidentDto incident){
+    private boolean isIncidentTypeInParkedGroup(IncidentDto incident) {
         return INCIDENT_PARKED_GROUP.contains(incident.getType());
     }
 
-    public void addEventToIncident(String incidentId, EventCreationDto eventCreation, String auth){
+    public void addEventToIncident(String incidentId, EventCreationDto eventCreation, String auth) {
         Response response = incidentWebTarget
                 .path("incident")
                 .path("addEventToIncident")
@@ -249,15 +243,13 @@ public class IncidentService {
                 .post(Entity.json(eventCreation), Response.class);
         String jsonDto = response.readEntity(String.class);
 
-        if(jsonDto.contains("\"code\":")){
+        if (jsonDto.contains("\"code\":")) {
             String errorDescription = json.fromJson(jsonDto, AppError.class).description;
             throw new RuntimeException(errorDescription);
         }
     }
 
-
-    public String addSimplePollToIncident(String incidentId, String auth, String username, String comment){
-
+    public String addSimplePollToIncident(String incidentId, String auth, String username, String comment) {
         IncidentDto incident = getIncident(incidentId, auth);
         UUID assetId = incident.getAssetId();
 
@@ -272,7 +264,7 @@ public class IncidentService {
         return pollId;
     }
 
-    private IncidentDto getIncident(String incidentId, String auth){
+    private IncidentDto getIncident(String incidentId, String auth) {
         String jsonDto = incidentWebTarget
                 .path("incident")
                 .path(incidentId)
@@ -280,14 +272,14 @@ public class IncidentService {
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .get(String.class);
 
-        if(jsonDto.contains("\"code\":")){
-            String errorDeskription = json.fromJson(jsonDto, AppError.class).description;
-            throw new RuntimeException(errorDeskription);
+        if (jsonDto.contains("\"code\":")) {
+            String errorDescription = json.fromJson(jsonDto, AppError.class).description;
+            throw new RuntimeException(errorDescription);
         }
         return json.fromJson(jsonDto, IncidentDto.class);
     }
 
-    public String addPollToIncident(String incidentId, PollRequestType pollRequest, String auth){
+    public String addPollToIncident(String incidentId, PollRequestType pollRequest, String auth) {
 
         String pollId = createPollForAsset(pollRequest, auth);
 
@@ -300,34 +292,33 @@ public class IncidentService {
         return pollId;
     }
 
-    private String createPollForAsset(PollRequestType pollRequest, String auth){
+    private String createPollForAsset(PollRequestType pollRequest, String auth) {
         String jsonCreatedPollResponse = assetWebTarget
                 .path("poll")
                 .request(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .post(Entity.json(pollRequest), String.class);
 
-        if(jsonCreatedPollResponse.contains("\"code\":")){
-            String errorDeskription = json.fromJson(jsonCreatedPollResponse, AppError.class).description;
-            throw new RuntimeException(errorDeskription);
+        if (jsonCreatedPollResponse.contains("\"code\":")) {
+            String errorDescription = json.fromJson(jsonCreatedPollResponse, AppError.class).description;
+            throw new RuntimeException(errorDescription);
         }
         CreatePollResultDto createdPollResponse = json.fromJson(jsonCreatedPollResponse, CreatePollResultDto.class);
 
-        if(createdPollResponse.isUnsentPoll()){
+        if (createdPollResponse.isUnsentPoll()) {
             return createdPollResponse.getUnsentPolls().get(0);
-        }else{
-            return createdPollResponse.getSentPolls().get(0);
         }
 
+        return createdPollResponse.getSentPolls().get(0);
     }
 
     public IncidentDto createIncident(IncidentDto incident, String auth, String user) {
         IncidentDto updatedIncident = createIncident(incident, auth);
-        if(updatedIncident.getId() == null){
+        if (updatedIncident.getId() == null) {
             return null;
         }
 
-        if(!updatedIncident.getType().equals(IncidentType.MANUAL_POSITION_MODE) && !updatedIncident.getType().equals(IncidentType.ASSET_NOT_SENDING)){
+        if (!updatedIncident.getType().equals(IncidentType.MANUAL_POSITION_MODE) && !updatedIncident.getType().equals(IncidentType.ASSET_NOT_SENDING)) {
             removeAssetFromPreviousReport(updatedIncident.getAssetId().toString(), auth);
             setParkedOnAsset(updatedIncident.getAssetId().toString(), user, true);
         }
@@ -344,19 +335,20 @@ public class IncidentService {
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .delete(Response.class);
         String responseString = response.readEntity(String.class);
-        if(response.getStatus() != 200 || responseString.contains("\"code\":")){
-            String errorDeskription = json.fromJson(responseString, AppError.class).description;
-            throw new RuntimeException(errorDeskription);
+        if (response.getStatus() != 200 || responseString.contains("\"code\":")) {
+            String errorDescription = json.fromJson(responseString, AppError.class).description;
+            throw new RuntimeException(errorDescription);
         }
     }
 
-    private void setParkedOnAsset(String assetId, String user, boolean parked){
+    private void setParkedOnAsset(String assetId, String user, boolean parked) {
         AssetDTO assetById = assetClient.getAssetById(AssetIdentifier.GUID, assetId);
         assetById.setParked(parked);
         assetById.setUpdatedBy(user);
+
         AssetBO bo = new AssetBO();
         bo.setAsset(assetById);
+
         assetClient.upsertAsset(bo);
     }
-
 }

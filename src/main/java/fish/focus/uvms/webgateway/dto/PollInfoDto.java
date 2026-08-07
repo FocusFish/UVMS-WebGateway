@@ -56,4 +56,14 @@ public class PollInfoDto {
     public void setMobileTerminalSnapshot(MobileTerminal mobileTerminalSnapshot) {
         this.mobileTerminalSnapshot = mobileTerminalSnapshot;
     }
+
+    @Override
+    public String toString() {
+        return "PollInfoDto{" +
+                "pollInfo=" + pollInfo +
+                ", pollStatus=" + pollStatus +
+                ", movement=" + movement +
+                ", mobileTerminalSnapshot=" + mobileTerminalSnapshot +
+                '}';
+    }
 }

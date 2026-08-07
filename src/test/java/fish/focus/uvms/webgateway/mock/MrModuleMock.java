@@ -21,7 +21,4 @@ public class MrModuleMock {
         System.setProperty("MR_MODULE_REACHED", "true");
         return Response.ok().build();
     }
-
-
-
 }

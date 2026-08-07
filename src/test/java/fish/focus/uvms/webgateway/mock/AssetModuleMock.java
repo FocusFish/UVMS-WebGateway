@@ -7,7 +7,6 @@ import fish.focus.uvms.commons.date.DateUtils;
 import fish.focus.uvms.mobileterminal.model.dto.CreatePollResultDto;
 import fish.focus.uvms.rest.security.RequiresFeature;
 import fish.focus.uvms.rest.security.UnionVMSFeature;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.MDC;
 
 import javax.ejb.Stateless;
