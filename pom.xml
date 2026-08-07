@@ -29,7 +29,7 @@
         <asset.version>6.10.2</asset.version>
         <movement.version>5.8.0</movement.version>
         <incident.version>1.1.0</incident.version>
-        <exchange.version>5.3.25</exchange.version>
+        <exchange.version>5.5.1</exchange.version>
     </properties>
 
     <dependencyManagement>
@@ -40,7 +40,7 @@
                 <version>${docker.dev.version}</version>
                 <type>pom</type>
             </dependency>
-        </dependencies>    
+        </dependencies>
     </dependencyManagement>
 
     <dependencies>
@@ -87,6 +87,11 @@
             <groupId>fish.focus.uvms.incident</groupId>
             <artifactId>incident-model</artifactId>
             <version>${incident.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>fish.focus.uvms.exchange</groupId>
+            <artifactId>exchange-model</artifactId>
+            <version>${exchange.version}</version>
         </dependency>
         <dependency>
             <groupId>fish.focus.uvms.exchange</groupId>
