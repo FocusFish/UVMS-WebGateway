@@ -11,9 +11,8 @@ copy of the GNU General Public License along with the IFDM Suite. If not, see <h
  */
 package fish.focus.uvms.webgateway;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import fish.focus.uvms.webgateway.filter.WebGatewayRestExceptionMapper;
+
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 import java.util.HashSet;
@@ -21,8 +20,6 @@ import java.util.Set;
 
 @ApplicationPath("/rest")
 public class RestActivator extends Application {
-
-    private final static Logger LOG = LoggerFactory.getLogger(RestActivator.class);
 
     private final Set<Object> singletons = new HashSet<>();
     private final Set<Class<?>> set = new HashSet<>();
@@ -45,5 +42,4 @@ public class RestActivator extends Application {
     public Set<Object> getSingletons() {
         return singletons;
     }
-
 }

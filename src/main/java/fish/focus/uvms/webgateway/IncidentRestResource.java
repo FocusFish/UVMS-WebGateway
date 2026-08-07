@@ -27,39 +27,37 @@ import javax.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 public class IncidentRestResource {
 
-    private final static Logger LOG = LoggerFactory.getLogger(IncidentRestResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(IncidentRestResource.class);
 
     @Inject
     IncidentService incidentService;
 
-
     @GET
     @Path("incidentLogForIncident/{incidentId}")
     @RequiresFeature(UnionVMSFeature.viewVesselsAndMobileTerminals)
-    public Response incidentLogForIncident(@Context HttpServletRequest request,@PathParam("incidentId") String incidentId)  {
-        try{
+    public Response incidentLogForIncident(@Context HttpServletRequest request, @PathParam("incidentId") String incidentId) {
+        try {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
-            ExtendedIncidentLogDto response = incidentService.incidentLogForIncident(incidentId, auth);
+            ExtendedIncidentLogDto response = incidentService.getIncidentLogForIncident(incidentId, auth);
 
             return Response.ok(response).build();
-        }catch (Exception e){
-            LOG.error("Error getting incident log for incident: " ,e.getMessage(), e);
+        } catch (Exception e) {
+            LOG.error("Error getting incident log for incident: {}", e.getMessage(), e);
             throw e;
         }
     }
 
-
     @POST
     @Path("addNoteToIncident/{incidentId}")
     @RequiresFeature(UnionVMSFeature.viewVesselsAndMobileTerminals)
-    public Response addNoteToIncident(@Context HttpServletRequest request,@PathParam("incidentId") String incidentId, Note note)  {
+    public Response addNoteToIncident(@Context HttpServletRequest request, @PathParam("incidentId") String incidentId, Note note) {
         try {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
             Note response = incidentService.addNoteToIncident(incidentId, auth, note);
 
             return Response.ok(response).build();
-        }catch (Exception e){
-            LOG.error("Error adding note to incident: " , e.getMessage(), e);
+        } catch (Exception e) {
+            LOG.error("Error adding note to incident: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -68,12 +66,12 @@ public class IncidentRestResource {
     @Path("createSimplePollForIncident/{incidentId}")
     @RequiresFeature(UnionVMSFeature.managePolls)
     public Response createSimplePollForIncident(@Context HttpServletRequest request, @PathParam("incidentId") String incidentId, SimpleCreatePoll pollDto) {
-        try{
+        try {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
             String response = incidentService.addSimplePollToIncident(incidentId, auth, request.getRemoteUser(), pollDto.getComment());
             return Response.ok(new PollIdDto(response)).build();
-        }catch (Exception e){
-            LOG.error("Error creating simple poll for incident: ", e.getMessage(), e);
+        } catch (Exception e) {
+            LOG.error("Error creating simple poll for incident: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -82,12 +80,12 @@ public class IncidentRestResource {
     @Path("createPollForIncident/{incidentId}")
     @RequiresFeature(UnionVMSFeature.managePolls)
     public Response createPollForIncident(@Context HttpServletRequest request, @PathParam("incidentId") String incidentId, PollRequestType pollRequest) {
-        try{
+        try {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
             String response = incidentService.addPollToIncident(incidentId, pollRequest, auth);
             return Response.ok(new PollIdDto(response)).build();
-        }catch (Exception e){
-            LOG.error("Error creating poll for incident: ", e.getMessage(), e);
+        } catch (Exception e) {
+            LOG.error("Error creating poll for incident: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -101,10 +99,9 @@ public class IncidentRestResource {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
             IncidentDto response = incidentService.createIncident(incident, auth, user);
             return Response.ok(response).build();
-        }catch (Exception e){
+        } catch (Exception e) {
             LOG.error("Error while creating incident: {}", e.getMessage(), e);
             throw e;
-
         }
     }
 
@@ -117,10 +114,9 @@ public class IncidentRestResource {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
             IncidentDto response = incidentService.updateIncidentType(update, auth, user);
             return Response.ok(response).build();
-        }catch (Exception e){
+        } catch (Exception e) {
             LOG.error("Error while updating incident type: {}", e.getMessage(), e);
             throw e;
-
         }
     }
 
@@ -133,10 +129,9 @@ public class IncidentRestResource {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
             IncidentDto response = incidentService.updateIncidentStatus(update, auth, user);
             return Response.ok(response).build();
-        }catch (Exception e){
+        } catch (Exception e) {
             LOG.error("Error while updating incident status: {}", e.getMessage(), e);
             throw e;
-
         }
     }
 
@@ -148,11 +143,9 @@ public class IncidentRestResource {
             String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
             IncidentDto response = incidentService.updateIncidentExpiry(update, auth);
             return Response.ok(response).build();
-        }catch (Exception e){
+        } catch (Exception e) {
             LOG.error("Error while updating incident expiry date: {}", e.getMessage(), e);
             throw e;
-
         }
     }
-
 }
