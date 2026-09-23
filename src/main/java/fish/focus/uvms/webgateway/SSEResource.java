@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 @RequiresFeature(UnionVMSFeature.viewMovements)
 public class SSEResource {
 
-    private final static Logger LOG = LoggerFactory.getLogger(SSEResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SSEResource.class);
 
     private Sse sse;
     private OutboundSseEvent.Builder eventBuilder;
@@ -59,50 +59,61 @@ public class SSEResource {
 
             userSinks.forEach(userSink -> {
                 if (userSink.getEventSink().isClosed()) {
-                    LOG.debug("Removing user " + userSink.getUser() + " from sse stream");
-                    userSink.getEventSink().close();
-                    userSinks.remove(userSink);
-
-                }else {
-                    for (String subscription : subscriberList) {
-                        if ((Constants.ALL.equals(subscription) || userSink.getUser().equals(subscription)) &&
-                                (movementSource == null || userSink.getSources().stream().anyMatch(source -> source.equals(movementSource)))) {
-                            LOG.debug("Broadcasting to {}", userSink.getUser());
-                            try {
-                                Callable<Object> task = () -> {
-                                    userSink.getEventSink().send(sseEvent).whenComplete((object, error) -> {
-                                        if (error != null) {
-                                            LOG.error("Removing user " + userSink.getUser() + " from sse stream due to error: " + error.getMessage());
-                                            userSinks.remove(userSink);
-                                        }
-                                    });
-                                    return true;
-                                };
-                                Future<Object> future = executor.submit(task);
-                                try {
-                                    Object result = future.get(2, TimeUnit.SECONDS);
-                                } catch (Exception ex) {
-                                    future.cancel(true);
-                                    LOG.error("Removing user " + userSink.getUser() + " from sse stream due to being unable to send updates within one second");
-                                    userSink.getEventSink().close();
-                                    userSinks.remove(userSink);
-                                }
-                            } catch (IllegalStateException e) {
-                                if (e.getMessage().contains("SseEventSink is closed")) {
-                                    LOG.debug("Removing user " + userSink.getUser() + " from sse stream due to closed stream");
-                                    userSinks.remove(userSink);
-                                } else {
-                                    throw new IllegalStateException(e);
-                                }
-                            }
-                        }
+                    deleteSink(userSink);
+                    return;
+                }
+                for (String subscription : subscriberList) {
+                    boolean hasSubscription = Constants.ALL.equals(subscription) || userSink.getUser().equals(subscription);
+                    boolean hasMovementSource = movementSource == null || userSink.getSources().stream().anyMatch(source -> source.equals(movementSource));
+                    if (!hasSubscription || !hasMovementSource) {
+                        continue;
                     }
+
+                    broadcastToUser(userSink, sseEvent);
                 }
             });
             LOG.debug("userSinks size: {}", userSinks.size());
-        }catch (Exception e){
+        } catch (Exception e) {
             LOG.error("Error while broadcasting SSE: ", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    private void deleteSink(UserSseEventSink userSink) {
+        LOG.debug("Removing user {} from sse stream", userSink.getUser());
+        userSink.getEventSink().close();
+        userSinks.remove(userSink);
+    }
+
+    private void broadcastToUser(UserSseEventSink userSink, OutboundSseEvent sseEvent) {
+        LOG.debug("Broadcasting to {}", userSink.getUser());
+        try {
+            Callable<Object> task = () -> {
+                userSink.getEventSink().send(sseEvent).whenComplete((object, error) -> {
+                    if (error != null) {
+                        // These are mostly "Broken pipe" errors, log on info level instead
+                        LOG.info("Removing user {} from sse stream due to error: {}", userSink.getUser(), error.getMessage());
+                        userSinks.remove(userSink);
+                    }
+                });
+                return true;
+            };
+            Future<Object> future = executor.submit(task);
+            try {
+                Object result = future.get(2, TimeUnit.SECONDS);
+            } catch (Exception ex) {
+                future.cancel(true);
+                LOG.error("Removing user {} from sse stream due to being unable to send updates within one second", userSink.getUser());
+                userSink.getEventSink().close();
+                userSinks.remove(userSink);
+            }
+        } catch (IllegalStateException e) {
+            if (e.getMessage().contains("SseEventSink is closed")) {
+                LOG.debug("Removing user {} from sse stream due to closed stream", userSink.getUser());
+                userSinks.remove(userSink);
+            } else {
+                throw new IllegalStateException(e);
+            }
         }
     }
 
@@ -115,10 +126,10 @@ public class SSEResource {
         String user = securityContext.getUserPrincipal().getName();
         userSinks.add(new UserSseEventSink(user, sseEventSink, sourceTypes));
         sseEventSink.send(sse.newEvent("User " + user + " is now registered"));
-        LOG.info("User " + user + " is now registered");
+        LOG.info("User {} is now registered", user);
     }
 
-    private List<MovementSourceType> convertToMovementSourceTypes (List<String> sources) {
+    private List<MovementSourceType> convertToMovementSourceTypes(List<String> sources) {
         List<MovementSourceType> sourceTypes = new ArrayList<>();
         if (sources == null || sources.isEmpty()) {
             sourceTypes = Arrays.asList(MovementSourceType.values());
@@ -131,7 +142,7 @@ public class SSEResource {
     }
 
     @Gauge(unit = MetricUnits.NONE, name = "WebCollector_current_number_of_sse_stream_subscribers", absolute = true)
-    public int getCurrentNumberOfSubscribers(){
+    public int getCurrentNumberOfSubscribers() {
         return userSinks.size();
     }
 
@@ -163,7 +174,8 @@ public class SSEResource {
             return eventSink;
         }
 
-        public List<MovementSourceType> getSources() {return sources; }
-
+        public List<MovementSourceType> getSources() {
+            return sources;
+        }
     }
 }

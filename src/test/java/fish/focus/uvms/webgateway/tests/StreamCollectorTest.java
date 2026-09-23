@@ -29,29 +29,31 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(Arquillian.class)
 public class StreamCollectorTest extends BuildStreamCollectorDeployment {
 
-    private final static Logger LOG = LoggerFactory.getLogger(StreamCollectorTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(StreamCollectorTest.class);
     //Connection close and there is nothing to receive
     private static final Runnable onComplete = () -> {
         System.out.println("Done!");
     };
+
     private static String dataString = "";
     private static String eventString = "";
+
     private static final Consumer<InboundSseEvent> onEvent = (inboundSseEvent) -> {
         String data = inboundSseEvent.readData();
         eventString = eventString.concat(inboundSseEvent.getName() == null ? " null name " : inboundSseEvent.getName());
         dataString = dataString.concat(data);
     };
-    private static String errorString = "";
     //Error
     private static final Consumer<Throwable> onError = (throwable) -> {
         LOG.error("Error while testing sse: ", throwable);
-        errorString = throwable.getMessage();
     };
     private Jsonb jsonb;
 
@@ -62,18 +64,16 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
     public void cleanup() {
         dataString = "";
         eventString = "";
-        errorString = "";
         jsonb = new JsonBConfigurator().getContext(null);
     }
 
     @Test
     @OperateOnDeployment("collector")
-    public void connectToSSETest() throws InterruptedException {
+    public void connectToSSETest() {
         try (SseEventSource source = createSSEEventSource()) {
             source.open();
             assertTrue(source.isOpen());
-            Thread.sleep(1000);
-            assertTrue("dataString: " + dataString, dataString.contains("registered"));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue("dataString: " + dataString, dataString.contains("registered")));
         }
     }
 
@@ -85,10 +85,9 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
             String testData = "test data";
             String testEvent = "test event";
             sendDataAsJMSMessageToStream(testData, testEvent, null, null);
-            Thread.sleep(100);
 
-            assertTrue(eventString, eventString.contains(testEvent));
-            assertTrue(dataString, dataString.contains(testData));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(eventString, eventString.contains(testEvent)));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(dataString, dataString.contains(testData)));
         }
     }
 
@@ -100,10 +99,9 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
             String testData = "test data";
             String testEvent = "test event";
             sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
-            Thread.sleep(100);
 
-            assertTrue(eventString, eventString.contains(testEvent));
-            assertTrue(dataString, dataString.contains(testData));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(eventString, eventString.contains(testEvent)));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(dataString, dataString.contains(testData)));
         }
     }
 
@@ -115,10 +113,9 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
             String testData = "test data";
             String testEvent = "test event";
             sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
-            Thread.sleep(1000);
 
-            assertTrue(eventString, eventString.contains(testEvent));
-            assertTrue(dataString, dataString.contains(testData));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(eventString, eventString.contains(testEvent)));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(dataString, dataString.contains(testData)));
         }
     }
 
@@ -130,10 +127,9 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
             String testData = "test data";
             String testEvent = "test event";
             sendDataAsJMSMessageToStream(testData, testEvent, Collections.singletonList("user"), null);
-            Thread.sleep(100);
 
-            assertTrue(eventString, eventString.contains(testEvent));
-            assertTrue(dataString, dataString.contains(testData));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(eventString, eventString.contains(testEvent)));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(dataString, dataString.contains(testData)));
         }
     }
 
@@ -145,10 +141,15 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
             String testData = "test data";
             String testEvent = "test event";
             sendDataAsJMSMessageToStream(testData, testEvent, Collections.singletonList("NOT user"), null);
-            Thread.sleep(1000);
 
-            assertFalse(eventString, eventString.contains(testEvent));
-            assertFalse(dataString, dataString.contains(testData));
+            await()
+                    .with().pollDelay(1, SECONDS)
+                    .atMost(2, SECONDS)
+                    .untilAsserted(() -> assertFalse(eventString, eventString.contains(testEvent)));
+            await()
+                    .with().pollDelay(1, SECONDS)
+                    .atMost(2, SECONDS)
+                    .untilAsserted(() -> assertFalse(dataString, dataString.contains(testData)));
         }
     }
 
@@ -160,10 +161,9 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
             String testData = "test data";
             String testEvent = "test event";
             sendDataAsJMSMessageToStream(testData, testEvent, null, MovementSourceType.MANUAL.value());
-            Thread.sleep(1000);
 
-            assertFalse(eventString, eventString.contains(testEvent));
-            assertFalse(dataString, dataString.contains(testData));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertFalse(eventString, eventString.contains(testEvent)));
+            await().atMost(2, SECONDS).untilAsserted(() -> assertFalse(dataString, dataString.contains(testData)));
         }
     }
 
@@ -172,7 +172,7 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
         WebTarget target = client.target("http://localhost:8080/test/rest/sse/subscribe");
         AuthorizationHeaderWebTarget jwtTarget = new AuthorizationHeaderWebTarget(target, getToken());
 
-        SseEventSource source = SseEventSource.target(jwtTarget).reconnectingEvery(1, TimeUnit.SECONDS).build();
+        SseEventSource source = SseEventSource.target(jwtTarget).reconnectingEvery(1, SECONDS).build();
         source.register(onEvent, onError, onComplete);
 
         return source;
@@ -183,7 +183,7 @@ public class StreamCollectorTest extends BuildStreamCollectorDeployment {
         WebTarget target = client.target("http://localhost:8080/test/rest/sse/subscribe").queryParam("sources", movementSource);
         AuthorizationHeaderWebTarget jwtTarget = new AuthorizationHeaderWebTarget(target, getToken());
 
-        SseEventSource source = SseEventSource.target(jwtTarget).reconnectingEvery(1, TimeUnit.SECONDS).build();
+        SseEventSource source = SseEventSource.target(jwtTarget).reconnectingEvery(1, SECONDS).build();
         source.register(onEvent, onError, onComplete);
 
         return source;
